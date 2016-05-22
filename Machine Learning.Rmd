@@ -1,0 +1,70 @@
+---
+title: "Machine Learning Project"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Background
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset). 
+
+## Data Processing
+
+# load req. packages
+```{r}
+library(caret)
+library(randomForest)
+library(Hmisc)
+library(foreach)
+library(doParallel)
+```
+
+# import data
+```{r}
+data <- read.csv("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv" , na.strings = c("NA", ""))
+```
+
+# Analyse and Data Cleansing 
+```{r}
+#summary(data)
+#describe(data)
+sapply(data, class)
+#str(data)
+```
+
+# remove irrelvent column from equation 
+```{r}
+data <- data[,-c(1:7)]
+featurenames<- colnames(data[colSums(is.na(data))==0])
+features <- data[featurenames]
+
+```
+
+# After cleaning the dataset , divide data set in training and testing
+```{r}
+partdata <- createDataPartition(y=features$classe, p =.7, list = FALSE)
+training <- features[partdata,]
+testing <- features[-partdata,]
+```
+
+# Use prediction Algorithm on training dataset
+```{r}
+registerDoParallel()
+model <- foreach(ntree=rep(150, 4), .combine=randomForest::combine) %dopar% randomForest(training[-ncol(training)], training$classe, ntree=ntree)
+```
+
+# Evaluate model
+```{r}
+predictionsTraining <- predict(model, newdata=training)
+confusionMatrix(predictionsTraining,training$classe)
+```
+
+# Apply model on test set
+
+```{r}
+predictionsTesting <- predict(model, newdata=testing)
+confusionMatrix(predictionsTesting,testing$classe)
+```
